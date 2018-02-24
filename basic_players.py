@@ -3,8 +3,8 @@ from multiset import FrozenMultiset
 import random
 
 from api import *
-from engine import draw_cards, result_of_move
-from engine import play_game, play_games
+from engine import draw_cards, result_of_move, swap_sides # helpers for the bots
+from engine import play_game, play_games # to run games
 
 class RobertRandom(Player):
     "Plays randomly like Robert: First, it picks a move type, then it picks cards"
@@ -62,6 +62,7 @@ def all_moves(gamestate): # returns a dict of all moves and a list of results af
                 move = Move4(cards_A=cards_A, cards_B=cards_B)
                 reacts = [cards_A, cards_B]
                 moves[move] = [result_of_move(gamestate, move, react) for react in reacts]
+    #print(len(moves))
     return moves
 
 class GreedyPlayer(Player):
@@ -86,14 +87,16 @@ class GreedyPlayer(Player):
                 self.evaluate_list(moves[move]))
 
     def react_move3(self, gamestate, move, cards):
+        # Note that move is the opponent's move, while gamestate is in "our perspective":
+        # To simulate their move with our reaction, we have to swap sides twice
         reacts = all_subsets(cards, 1)
         return max(reacts, key=lambda react:
-                self.evaluate(result_of_move(gamestate, move, react)))
+                self.evaluate(swap_sides(result_of_move(swap_sides(gamestate), move, react))))
 
     def react_move4(self, gamestate, move, cards_A, cards_B):
         reacts = [cards_A, cards_B]
         return max(reacts, key=lambda react:
-                self.evaluate(result_of_move(gamestate, move, react)))
+                self.evaluate(swap_sides(result_of_move(swap_sides(gamestate), move, react))))
 
 class ExampleGreedyPlayer(GreedyPlayer):
     "Wants all the Pink5s"
