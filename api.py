@@ -111,11 +111,11 @@ class Player(object):
         # return a move m such that validate_move(m, gamestate)
         raise NotImplementedError()
 
-    def react_move3(self, gamestate, cards):
+    def react_move3(self, gamestate, move, cards):
         # return a cardset c such that validate_cardset(c, size=1) and c <= cards
         raise NotImplementedError()
 
-    def react_move4(self, gamestate, cards_A, cards_B):
+    def react_move4(self, gamestate, move, cards_A, cards_B):
         # return a cardset c such that c == cards_A or c == cards_B
         raise NotImplementedError()
 

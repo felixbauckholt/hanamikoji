@@ -90,6 +90,33 @@ def draw(gamestate, players, log=constant_None):
         own_state = modifier(hand = lambda x : x + card)
     )
 
+def result_of_move(gamestate, move, react=None):
+    hidden, discarded, own_played, opp_played = (no_cards,)*4
+    mt = move_type(move)
+    if mt == MoveType.Move1:
+        hidden = move.cards
+    elif mt == MoveType.Move2:
+        discarded = move.cards
+    elif mt == MoveType.Move3:
+        opp_played = react
+        own_played = move.cards - react
+    elif mt == MoveType.Move4:
+        opp_played = react
+        own_played = (move.cards_A + move.cards_B) - react
+    return modify(gamestate,
+        own_state = modifier(
+            hand      = lambda x : x - (hidden + discarded + own_played + opp_played),
+            played    = lambda x : x + own_played,
+            hidden    = lambda x : x + hidden,
+            discarded = lambda x : x + discarded,
+            moves     = lambda moves : tuple(b or (i == mt) for i, b in enumerate(moves))
+        ),
+        opponent_state = modifier(
+            played = lambda x : x + opp_played
+        )
+    )
+
+
 def do_move(gamestate, players, log=constant_None):
     own_k = gamestate.own_state.key
     opp_k = gamestate.opponent_state.key
@@ -103,43 +130,23 @@ def do_move(gamestate, players, log=constant_None):
     players[opp_k].notify_move(censored_opp_gs, censor_move(move))
     log("Player %s chose move %s" % (own_k, move))
 
-    hidden, discarded, own_played, opp_played = (no_cards,)*4
+    react = None
     mt = move_type(move)
-    if mt == MoveType.Move1:
-        hidden += move.cards
-    elif mt == MoveType.Move2:
-        discarded += move.cards
-    elif mt == MoveType.Move3:
-        react = players[opp_k].react_move3(censored_opp_gs, move.cards)
+    if mt == MoveType.Move3:
+        react = players[opp_k].react_move3(censored_opp_gs, move, move.cards)
         if not (validate_cardset(react, size = 1) and react <= move.cards):
             log("Player %s chose invalid react_move3: %r" % (opp_k, react))
             endgame(own_k, players, log)
         players[own_k].notify_react_move3(censored_gs, move, react)
         log("Player %s chose react_move3 %s" % (opp_k, react))
-        opp_played += react
-        own_played += move.cards - react
     elif mt == MoveType.Move4:
-        react = players[opp_k].react_move4(censored_opp_gs, move.cards_A, move.cards_B)
+        react = players[opp_k].react_move4(censored_opp_gs, move, move.cards_A, move.cards_B)
         if not (react == move.cards_A or react == move.cards_B):
             log("Player %s chose invalid react_move4: %r" % (opp_k, react))
             endgame(own_k, players, log)
         players[own_k].notify_react_move4(censored_gs, move, react)
         log("Player %s chose react_move4 %s" % (opp_k, react))
-        opp_played += react
-        own_played += (move.cards_A + move.cards_B) - react
-
-    return modify(gamestate,
-        own_state = modifier(
-            hand      = lambda x : x - (hidden + discarded + own_played + opp_played),
-            played    = lambda x : x + own_played,
-            hidden    = lambda x : x + hidden,
-            discarded = lambda x : x + discarded,
-            moves     = lambda moves : tuple(b or (i == mt) for i, b in enumerate(moves))
-        ),
-        opponent_state = modifier(
-            played = lambda x : x + opp_played
-        )
-    )
+    return result_of_move(gamestate, move, react)
 
 def update_favors(gamestate):
     def newfavor(gamestate, card_i, old_favor):
@@ -194,9 +201,19 @@ def play_round(gamestate, players, log=constant_None):
 def play_game(key_A, class_A, key_B, class_B, log=constant_None):
     players = {key_A: class_A(), key_B: class_B()}
     gamestate = deal(keys=[key_A, key_B])
+    log("Starting game")
     try:
         while True:
             gamestate = deal(swap_sides(play_round(gamestate, players, log)))
     except GameEnd as e:
         return e.winner
 
+def play_games(key_A, class_A, key_B, class_B, n, switch_sides=True, log=constant_None):
+    scores = {key_A: 0, key_B: 0}
+    for _ in range(n):
+        if switch_sides and n % 2:
+            winner = play_game(key_B, class_B, key_A, class_A, log)
+        else:
+            winner = play_game(key_A, class_A, key_B, class_B, log)
+        scores[winner] += 1
+    return scores
