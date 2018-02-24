@@ -29,6 +29,28 @@ class RobertRandom(Player):
     def react_move4(self, gamestate, move, cards_A, cards_B):
         return random.choice([cards_A, cards_B])
 
+class KeriRandom(RobertRandom):
+    "First hides highest card, then discards lowest cards, then plays 3 and 4; it reacts randomly"
+    def choose_move(self, gamestate):
+        mt = [mt for mt in MoveType if not gamestate.own_state.moves[mt]][0]
+        hand = gamestate.own_state.hand
+        if mt == MoveType.Move1:
+            return Move1(cards=FrozenMultiset([max(hand)]))
+        elif mt == MoveType.Move2:
+            card1 = min(hand)
+            card2 = min(hand - FrozenMultiset([card1]))
+            return Move2(cards=FrozenMultiset([card1, card2]))
+        elif mt == MoveType.Move3:
+            return Move3(cards=draw_cards(hand, 3))
+        elif mt == MoveType.Move4:
+            cards_A = draw_cards(hand, 2)
+            cards_B = draw_cards(hand - cards_A, 2)
+            return Move4(cards_A=cards_A, cards_B=cards_B)
+
+class SlightlySmarterKeri(KeriRandom):
+    def react_move3(self, gamestate, move, cards):
+        return FrozenMultiset([max(cards)])
+
 def all_subsets(cards, n):
     l = list(cards)
     def helper(stuff, i, remaining):
@@ -107,5 +129,7 @@ class ExampleGreedyPlayer(GreedyPlayer):
               - gamestate.opponent_state.played[Card.Pink5])
 
 if __name__ == "__main__":
-    print(play_game("Robert", RobertRandom, "Greedy", ExampleGreedyPlayer, print))
-    print(play_games("Robert", RobertRandom, "Greedy", ExampleGreedyPlayer, 1000))
+    print(play_game("Robert", RobertRandom, "Keri", SlightlySmarterKeri, print))
+    print(play_games("Robert", RobertRandom, "Keri", SlightlySmarterKeri, 10000))
+    #print(play_game("Robert", RobertRandom, "Greedy", ExampleGreedyPlayer, print))
+    #print(play_games("Robert", RobertRandom, "Greedy", ExampleGreedyPlayer, 1000))
