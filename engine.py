@@ -141,10 +141,18 @@ def do_move(gamestate, players, log=constant_None):
 
 def play_round(gamestate, players, log=constant_None):
     log("State after dealing: %s" % (gamestate,))
+    for gs in [gamestate, swap_sides(gamestate)]:
+        players[gs.own_state.key].notify_deal(censor_gamestate(gs))
     for i in range(8):
         gamestate = draw(gamestate, players, log)
         gamestate = do_move(gamestate, players, log)
         gamestate = swap_sides(gamestate)
+
+    assert(len(gamestate.pile) == 1)
+    assert(gamestate.own_state.moves == gamestate.opponent_state.moves == (True,)*4)
+    for gs in [gamestate, swap_sides(gamestate)]:
+        players[gs.own_state.key].notify_reveal(censor_gamestate(gs, just_keys=True))
+
     # TODO: change favors, figure out if someone won
     log("Did somebody win? I'm too lazy to find out, let's just play another round...")
     return gamestate
