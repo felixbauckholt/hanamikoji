@@ -29,4 +29,4 @@ class RobertRandom(Player):
         return random.choice([cards_A, cards_B])
 
 if __name__ == "__main__":
-    play_game("RobertA", RobertRandom, "RobertB", RobertRandom, print)
+    print(play_game("RobertA", RobertRandom, "RobertB", RobertRandom, print))
